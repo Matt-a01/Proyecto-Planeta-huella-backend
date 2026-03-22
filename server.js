@@ -34,11 +34,10 @@ const InstitutionSchema = new mongoose.Schema({
     }, { timestamps: true }); // Guarda la fecha de creación
 
     // encriptacion de contraseña antes de ser guardada
-    InstitutionSchema.pre('save', async function(next) {
-    if (!this.isModified('password')) return next();
+    InstitutionSchema.pre('save', async function() {
+    if (!this.isModified('password')) return;
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
-    next();
     });
 
     const Institution = mongoose.model('Institution', InstitutionSchema);
@@ -58,13 +57,13 @@ const InstitutionSchema = new mongoose.Schema({
     });
 
     // Registrar institución (AuthModal.jsx)
-    app.get('/api/register', async (req, res) => {
-    try {
+    app.post('/api/register', async (req, res) => {
+    try {      
         const newInst = new Institution(req.body);
-        await newInst.save();
+
         res.status(201).json({ message: 'Registrado con éxito' });
     } catch (error) {
-        res.status(400).json({ error: 'Error al registrar. Quizás el correo ya existe.' });
+        res.status(400).json({ error: 'Error al registrar. Verifique su informacion' });
     }
     });
 
