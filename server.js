@@ -2,7 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const bcrypt = require('bcryptjs');
+const Institution = require('./models/Institution');
 
 const app = express();
 
@@ -13,66 +13,37 @@ app.use(cors({
 }));
 app.use(express.json()); // Permite recibir datos en formato JSON
 
-
-//  MODELO DE DATOS (Estructura y Seguridad) 
-
-const InstitutionSchema = new mongoose.Schema({
-    name: { type: String, required: true },
-    email: { type: String, required: true, unique: true },
-    password: { type: String, required: true }, //Contraseña guardada con encriptacion
-    role: { type: String, enum: ['adoptante', 'refugio', 'veterinaria', 'campaña'] },
-
-    // Datos para el mapa
-    location: {    
-        lat: { type: Number },
-        lng: { type: Number },
-        address: { type: String }
-    },
-
-    services: String,
-    hours: String,
-    }, { timestamps: true }); // Guarda la fecha de creación
-
-    // encriptacion de contraseña antes de ser guardada
-    InstitutionSchema.pre('save', async function() {
-    if (!this.isModified('password')) return;
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
-    });
-
-    const Institution = mongoose.model('Institution', InstitutionSchema);
-
     // RUTAS (Endpoints)
 
-    //ruta para obtener todos los pines (InteractiveMap.jsx)
-    app.get('/api/pins', async (req, res) => {
-    try {
-        // Devolver datos publicos
-        const pins = await Institution.find({ role: { $ne: 'adoptante' } })
-        .select('-password -email');
-        res.json(pins);
-    } catch (error) {
-        res.status(500).json({ error: 'Error al obtener el mapa' });
-    }
-    });
+//ruta para obtener todos los pines (InteractiveMap.jsx)
+app.get('/api/pins', async (req, res) => {
+try {
+    // Devolver datos publicos
+    const pins = await Institution.find({ role: { $ne: 'adoptante' } })
+    .select('-password -email');
+    res.json(pins);
+} catch (error) {
+    res.status(500).json({ error: 'Error al obtener el mapa' });
+}
+});
 
-    // Registrar institución (AuthModal.jsx)
-    app.post('/api/register', async (req, res) => {
-    try {      
-        const newInst = new Institution(req.body);
+// Registrar institución (AuthModal.jsx)
+app.post('/api/register', async (req, res) => {
+try {      
+    const newInst = new Institution(req.body);
 
-        res.status(201).json({ message: 'Registrado con éxito' });
-    } catch (error) {
-        res.status(400).json({ error: 'Error al registrar. Verifique su informacion' });
-    }
-    });
+    res.status(201).json({ message: 'Registrado con éxito' });
+} catch (error) {
+    res.status(400).json({ error: 'Error al registrar. Verifique su informacion' });
+}
+});
 
-    // CONEXIÓN A LA BASE DE DATOS
-    mongoose.connect(process.env.MONGO_URI)
-    .then(() => {
-        console.log(`Conectado a MongoDB (${process.env.NODE_ENV === 'production' ? 'PRODUCCIÓN' : 'TESTEO'})`);
-        // Iniciador de servidor 
-        const PORT = process.env.PORT || 5000;
-        app.listen(PORT, () => console.log(` Servidor corriendo en el puerto ${PORT}`));
-    })
-    .catch(err => console.error('Error conectando a MongoDB', err));   
+// CONEXIÓN A LA BASE DE DATOS
+mongoose.connect(process.env.MONGO_URI)
+.then(() => {
+    console.log(`Conectado a MongoDB (${process.env.NODE_ENV === 'production' ? 'PRODUCCIÓN' : 'TESTEO'})`);
+    // Iniciador de servidor 
+    const PORT = process.env.PORT || 5000;
+    app.listen(PORT, () => console.log(` Servidor corriendo en el puerto ${PORT}`));
+})
+.catch(err => console.error('Error conectando a MongoDB', err));   
