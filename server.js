@@ -8,7 +8,7 @@ const Institution = require('./models/Institution');
 const User = require('./models/User');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
-const mongoSanitize = require('express-mongo-sanitize');
+//const mongoSanitize = require('express-mongo-sanitize');
 const { body, validationResult } = require('express-validator');
 
 const app = express();
@@ -25,7 +25,7 @@ app.use(express.json()); // Permite recibir datos en formato JSON
 app.use(helmet()); 
 
 //Mongo Sanitize: Elimina cualquier signo "$" o "." de los inputs para evitar inyección de BD
-app.use(mongoSanitize());
+//app.use(mongoSanitize());
 
 //Rate Limiter: Protección contra BOTS y SPAM. 
 // Limita a 5 peticiones por IP cada 15 minutos para las rutas de creación de cuentas y login.
@@ -45,6 +45,7 @@ try {
     .select('-password -email');
     res.json(pins);
 } catch (error) {
+    console.error("🔥 ERROR REAL DEL SERVIDOR:", error);
     res.status(500).json({ error: 'Error al obtener el mapa' });
 }
 });
@@ -91,6 +92,7 @@ try {
         user: { name: newAccount.name, role: newAccount.role, email: newAccount.email } 
         });
     } catch (error) {
+        console.error("🔥 ERROR REAL DEL SERVIDOR:", error);
     res.status(400).json({ error: 'Error al registrar', details: error.message });
     }
 });
@@ -134,6 +136,7 @@ try {
     user: { name: account.name, role: account.role, email: account.email } 
     });
     } catch (error) {
+        console.error("🔥 ERROR REAL DEL SERVIDOR:", error);
         res.status(500).json({ error: 'Error en el servidor' });
     }
 });
