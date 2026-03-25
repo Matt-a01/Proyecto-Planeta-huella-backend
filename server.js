@@ -1,4 +1,4 @@
-require('dotenv').config(); 
+require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -6,16 +6,34 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const Institution = require('./models/Institution');
 const User = require('./models/User');
-
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const mongoSanitize = require('express-mongo-sanitize');
+const { body, validationResult } = require('express-validator');
 
 const app = express();
 
 // SEGURIDAD 
 
+// MIDDLEWARES GLOBALES
 app.use(cors({
     origin: ['http://localhost:5173', 'https://proyecto-planeta-huella.onrender.com'] 
 }));
 app.use(express.json()); // Permite recibir datos en formato JSON
+
+//Protege las cabeceras HTTP contra ataques cruzados (XSS)
+app.use(helmet()); 
+
+//Mongo Sanitize: Elimina cualquier signo "$" o "." de los inputs para evitar inyección de BD
+app.use(mongoSanitize());
+
+//Rate Limiter: Protección contra BOTS y SPAM. 
+// Limita a 5 peticiones por IP cada 15 minutos para las rutas de creación de cuentas y login.
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutos
+    max: 5, // Solo 5 intentos permitidos por IP
+    message: { error: 'Demasiadas peticiones desde esta IP. Por favor, Intentalo mas tarde.' }
+});
 
     // RUTAS (Endpoints)
 
@@ -32,7 +50,18 @@ try {
 });
 
 //  Registrar institución y/o usuarios (AuthModal.jsx)
-app.post('/api/register', async (req, res) => {
+app.post('/api/register', authLimiter, [
+    body('name').trim().notEmpty().withMessage('El nombre es obligatorio').escape(),
+    body('email').isEmail().withMessage('Debe ser un correo válido').normalizeEmail(),
+    body('password').isLength({ min: 6 }).withMessage('La contraseña debe tener mínimo 6 caracteres'),
+    body('role').isIn(['adoptante', 'veterinaria', 'refugio']).withMessage('Rol inválido')
+], async (req, res) => {
+
+const errors = validationResult(req);
+if (!errors.isEmpty()) {
+    return res.status(400).json({ error: errors.array()[0].msg });
+}
+
 try {      
     const { role, email } = req.body;
 
@@ -67,7 +96,16 @@ try {
 });
 
 //  LOGIN
-app.post('/api/login', async (req, res) => {
+app.post('/api/login', authLimiter, [
+    body('email').isEmail().normalizeEmail(),
+    body('password').notEmpty()
+], async (req, res) => {
+
+const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+return res.status(400).json({ error: 'Datos de acceso inválidos' });
+}
+
 try {
     const { email, password } = req.body;
 
